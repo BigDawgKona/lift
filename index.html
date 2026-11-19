@@ -32,6 +32,7 @@ b{font-weight:700}
 .mt{margin-top:10px}
 .link{background:none;border:0;color:var(--acc);font:inherit;font-weight:700;padding:10px 0}
 .center{display:block;margin:14px auto 0}
+.icon-btn.swap{font-size:19px;color:var(--acc)}
 .icon-btn{background:none;border:0;color:var(--mute);font-size:22px;line-height:1;padding:4px 8px;font-family:inherit}
 /* train */
 .week .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px;text-align:center}
@@ -211,7 +212,7 @@ function vTrain(){
   const sets=en.sets.map((s,si)=>{const p=ph(en.exId,si);
    return `<div class="set${s.done?' done':''}${s.pr?' pr':''}"><button class="n" data-a="rmSet" data-e="${ei}" data-s="${si}">${s.pr?'★':si+1}</button><input data-f="w" data-e="${ei}" data-s="${si}" inputmode="decimal" placeholder="${p?fmtN(p.w):'—'}" value="${esc(s.w)}"><input data-f="r" data-e="${ei}" data-s="${si}" inputmode="numeric" placeholder="${p?p.r:'—'}" value="${esc(s.r)}"><button class="chk" data-a="chk" data-e="${ei}" data-s="${si}">✓</button></div>`}).join('');
   const l=lastSets(en.exId);
-  return `<div class="card ex"><div class="row"><h3 class="tap" data-a="sheet" data-t="lift" data-id="${en.exId}">${esc(exName(en.exId))} <span class="arrow">›</span></h3><button class="icon-btn" data-a="rmEx" data-e="${ei}">×</button></div><div class="mute small">${en.target?`<span class="acc"><b>${en.target.sets} × ${en.target.reps}</b></span>${l?' · ':''}`:''}${l?`Last: ${l.map(s=>`${fmtN(s.w)}×${s.r}`).join(', ')}`:''}${en.target&&readyUp(en.exId,en.target.reps)?' <span class="badge">↑ Add weight</span>':''}</div><div class="sets-h"><span>Set</span><span>${S.unit}</span><span>Reps</span><span></span></div>${sets}<button class="link" data-a="addSet" data-e="${ei}">+ Add set</button></div>`;
+  return `<div class="card ex"><div class="row"><h3 class="tap" data-a="sheet" data-t="lift" data-id="${en.exId}">${esc(exName(en.exId))} <span class="arrow">›</span></h3><span><button class="icon-btn swap" data-a="sheet" data-t="addEx" data-swap="${ei}">⇄</button><button class="icon-btn" data-a="rmEx" data-e="${ei}">×</button></span></div><div class="mute small">${en.target?`<span class="acc"><b>${en.target.sets} × ${en.target.reps}</b></span>${l?' · ':''}`:''}${l?`Last: ${l.map(s=>`${fmtN(s.w)}×${s.r}`).join(', ')}`:''}${en.target&&readyUp(en.exId,en.target.reps)?' <span class="badge">↑ Add weight</span>':''}</div><div class="sets-h"><span>Set</span><span>${S.unit}</span><span>Reps</span><span></span></div>${sets}<button class="link" data-a="addSet" data-e="${ei}">+ Add set</button></div>`;
  }).join('');
  return `<div class="wk-head"><div><p class="kana">トレーニング中 · <span id="elapsed">${dur(Date.now()-A.start)}</span></p><h1>${esc(A.name)}<span class="slash"></span></h1></div><button class="btn sm" data-a="finish">Finish</button></div>${ex}<button class="btn ghost" data-a="sheet" data-t="addEx">+ Add exercise</button><button class="link danger center" data-a="cancel">Cancel workout</button>`;
 }
@@ -272,7 +273,7 @@ function exList(){const ql=q.trim().toLowerCase(),list=S.exercises.filter(e=>e.n
 function renderSheet(){
  const el=$('#sheet');if(!sheet){el.innerHTML='';return}
  let h='';const close=`<button class="link" data-a="closeSheet">Done</button>`;
- if(sheet.t==='addEx')h=`<div class="row"><b class="st">Add exercise</b><button class="link" data-a="${sheet.tplId?'backTpl':'closeSheet'}">${sheet.tplId?'Back':'Close'}</button></div><input id="q" class="field" placeholder="Search or create new" value="${esc(q)}" autocomplete="off"><div id="qlist">${exList()}</div>`;
+ if(sheet.t==='addEx')h=`<div class="row"><b class="st">${sheet.swap!==undefined?'Swap for…':'Add exercise'}</b><button class="link" data-a="${sheet.tplId?'backTpl':'closeSheet'}">${sheet.tplId?'Back':'Close'}</button></div><input id="q" class="field" placeholder="Search or create new" value="${esc(q)}" autocomplete="off"><div id="qlist">${exList()}</div>`;
  if(sheet.t==='tpl'){const t=curTpl();if(!t){sheet=null;el.innerHTML='';return}
   h=`<div class="row"><b class="st">Edit template</b>${close}</div><input class="field" data-f="tplname" value="${esc(t.name)}">${t.exerciseIds.map((id,i)=>`<div class="list-row"><span>${esc(exName(id))}</span><span>${i?`<button class="icon-btn" data-a="tplUp" data-i="${i}">↑</button>`:''}<button class="icon-btn" data-a="tplRm" data-i="${i}">×</button></span></div>`).join('')}<button class="link" data-a="sheet" data-t="addEx" data-tpl="${t.id}">+ Add exercise</button><br><button class="link danger" data-a="delTpl">Delete template</button>`}
  if(sheet.t==='lift'){const hs=liftHist(sheet.id);
@@ -295,6 +296,7 @@ function render(){
 /* ---------- actions ---------- */
 function burst(){['#burst','#lines'].forEach(s=>{const el=$(s);el.classList.remove('go');void el.offsetWidth;el.classList.add('go')});prBeep()}
 function addEx(id){
+ if(sheet&&sheet.swap!==undefined){const en=S.active.entries[+sheet.swap];en.exId=id;en.sets=newSets(id,en.target&&en.target.sets);save();sheet=null;render();toast('Swapped to '+exName(id));return}
  if(sheet&&sheet.tplId){const t=S.templates.find(x=>x.id===sheet.tplId);t.exerciseIds.push(id);save();sheet={t:'tpl',id:t.id};renderSheet();return}
  S.active.entries.push({exId:id,sets:newSets(id)});save();sheet=null;render();
  setTimeout(()=>window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'}),50);
@@ -371,7 +373,7 @@ document.addEventListener('click',e=>{
   case 'rmEx':if(!confirm(`Remove ${exName(A.entries[+d.e].exId)}?`))return;A.entries.splice(+d.e,1);save();break;
   case 'finish':finish();break;
   case 'cancel':if(!confirm('Discard this workout?'))return;S.active=null;restEnd=0;save();break;
-  case 'sheet':q='';sheet={t:d.t,id:d.id,tplId:d.tpl,fresh:true};renderSheet();return;
+  case 'sheet':q='';sheet={t:d.t,id:d.id,tplId:d.tpl,swap:d.swap,fresh:true};renderSheet();return;
   case 'closeSheet':sheet=null;break;
   case 'backTpl':sheet={t:'tpl',id:sheet.tplId};renderSheet();return;
   case 'pickEx':addEx(d.id);return;
