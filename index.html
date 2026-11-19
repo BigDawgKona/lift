@@ -162,21 +162,22 @@ const e1=(w,r)=>r<=1?w:w*(1+r/30);
 const lenU=()=>S.unit==='lb'?'in':'cm';
 const MEAS=['Waist','Chest','Hips','Arms','Thighs','Neck'];
 
-const PLAN={Push:['Bench Press','Overhead Press','Incline Dumbbell Press','Lateral Raise','Tricep Pushdown'],
-Pull:['Lat Pulldown','Barbell Row','Seated Cable Row','Face Pull','Bicep Curl'],
-Legs:['Leg Press','Hack Squat','Leg Extension','Seated Leg Curl','Calf Raise']};
-
-function seed(){const exercises=[],templates=[];
- for(const [name,list] of Object.entries(PLAN)){const ids=list.map(n=>{let ex=exercises.find(x=>x.name===n);if(!ex){ex={id:uid(),name:n};exercises.push(ex)}return ex.id});templates.push({id:uid(),name,exerciseIds:ids})}
- return {v:1,unit:'lb',rest:90,goal:3,exercises,templates,sessions:[],weights:[],measures:[],active:null}}
-function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.v)return Object.assign(seed(),d)}catch(e){}return seed()}
+const PLAN=[
+ ['Full Body A',[['Leg Press',3,'8–12'],['Machine Chest Press',3,'8–12'],['Lat Pulldown',3,'8–12'],['Seated Leg Curl',3,'10–15'],['DB Lateral Raise',3,'12–15'],['Tricep Pushdown',2,'10–15']]],
+ ['Full Body B',[['Hack Squat',3,'8–12'],['Seated Cable Row',3,'8–12'],['Incline DB Press',3,'8–12'],['Leg Extension',3,'10–15'],['Machine Shoulder Press',2,'8–12'],['DB Curl',2,'10–15']]],
+ ['Full Body C',[['DB Romanian Deadlift',3,'8–12'],['Pec Deck',3,'10–15'],['Chest-Supported Row',3,'8–12'],['Calf Raise',3,'10–15'],['Face Pull',2,'12–15'],['Cable Crunch',2,'10–15']]]];
+const PLAN_V=2;
+function applyPlan(o){o.templates=PLAN.map(([name,list])=>{const t={id:uid(),name,exerciseIds:[],targets:{}};list.forEach(([n,sets,reps])=>{let ex=o.exercises.find(x=>x.name.toLowerCase()===n.toLowerCase());if(!ex){ex={id:uid(),name:n};o.exercises.push(ex)}t.exerciseIds.push(ex.id);t.targets[ex.id]={sets,reps}});return t});o.planV=PLAN_V;return o}
+function seed(){return applyPlan({v:1,unit:'lb',rest:90,goal:3,exercises:[],templates:[],sessions:[],weights:[],measures:[],active:null})}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.v){const o=Object.assign(seed(),d);if((d.planV||0)<PLAN_V&&!o.active){applyPlan(o);localStorage.setItem(KEY,JSON.stringify(o))}return o}}catch(e){}return seed()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Could not save!')}}
 
 let S=load(),tab='train',htab='workouts',wtab='scale',sheet=null,q='',restEnd=0,openHist=null,ac=null,tt,mDraft={};
 
 function exName(id){return (S.exercises.find(e=>e.id===id)||{name:'Exercise'}).name}
 function lastSets(exId){for(let i=S.sessions.length-1;i>=0;i--){const en=S.sessions[i].entries.find(e=>e.exId===exId);if(en&&en.sets.length)return en.sets}return null}
-function newSets(exId){const l=lastSets(exId);return Array.from({length:l?l.length:3},()=>({w:'',r:'',done:false}))}
+function newSets(exId,n){const l=lastSets(exId);return Array.from({length:n||(l?l.length:3)},()=>({w:'',r:'',done:false}))}
+function readyUp(exId,reps){const l=lastSets(exId);if(!l||!reps)return false;const top=parseInt(String(reps).split(/[–-]/).pop());return top>0&&l.every(x=>x.r>=top)}
 function ph(exId,i){const l=lastSets(exId);return l?l[Math.min(i,l.length-1)]:null}
 const curTpl=()=>S.templates.find(x=>x.id===sheet.id);
 function liftHist(exId){return S.sessions.map(s=>{const en=s.entries.find(e=>e.exId===exId);if(!en)return null;let b=null;en.sets.forEach(x=>{const v=e1(x.w,x.r);if(!b||v>b.v)b={v,w:x.w,r:x.r}});return b&&{date:s.start,...b,prs:en.sets.filter(x=>x.pr).length,heavy:Math.max(...en.sets.map(x=>x.w))}}).filter(Boolean)}
@@ -210,7 +211,7 @@ function vTrain(){
   const sets=en.sets.map((s,si)=>{const p=ph(en.exId,si);
    return `<div class="set${s.done?' done':''}${s.pr?' pr':''}"><button class="n" data-a="rmSet" data-e="${ei}" data-s="${si}">${s.pr?'★':si+1}</button><input data-f="w" data-e="${ei}" data-s="${si}" inputmode="decimal" placeholder="${p?fmtN(p.w):'—'}" value="${esc(s.w)}"><input data-f="r" data-e="${ei}" data-s="${si}" inputmode="numeric" placeholder="${p?p.r:'—'}" value="${esc(s.r)}"><button class="chk" data-a="chk" data-e="${ei}" data-s="${si}">✓</button></div>`}).join('');
   const l=lastSets(en.exId);
-  return `<div class="card ex"><div class="row"><h3 class="tap" data-a="sheet" data-t="lift" data-id="${en.exId}">${esc(exName(en.exId))} <span class="arrow">›</span></h3><button class="icon-btn" data-a="rmEx" data-e="${ei}">×</button></div>${l?`<div class="mute small">Last: ${l.map(s=>`${fmtN(s.w)}×${s.r}`).join(', ')}</div>`:''}<div class="sets-h"><span>Set</span><span>${S.unit}</span><span>Reps</span><span></span></div>${sets}<button class="link" data-a="addSet" data-e="${ei}">+ Add set</button></div>`;
+  return `<div class="card ex"><div class="row"><h3 class="tap" data-a="sheet" data-t="lift" data-id="${en.exId}">${esc(exName(en.exId))} <span class="arrow">›</span></h3><button class="icon-btn" data-a="rmEx" data-e="${ei}">×</button></div><div class="mute small">${en.target?`<span class="acc"><b>${en.target.sets} × ${en.target.reps}</b></span>${l?' · ':''}`:''}${l?`Last: ${l.map(s=>`${fmtN(s.w)}×${s.r}`).join(', ')}`:''}${en.target&&readyUp(en.exId,en.target.reps)?' <span class="badge">↑ Add weight</span>':''}</div><div class="sets-h"><span>Set</span><span>${S.unit}</span><span>Reps</span><span></span></div>${sets}<button class="link" data-a="addSet" data-e="${ei}">+ Add set</button></div>`;
  }).join('');
  return `<div class="wk-head"><div><p class="kana">トレーニング中 · <span id="elapsed">${dur(Date.now()-A.start)}</span></p><h1>${esc(A.name)}<span class="slash"></span></h1></div><button class="btn sm" data-a="finish">Finish</button></div>${ex}<button class="btn ghost" data-a="sheet" data-t="addEx">+ Add exercise</button><button class="link danger center" data-a="cancel">Cancel workout</button>`;
 }
@@ -355,7 +356,7 @@ document.addEventListener('click',e=>{
   case 'htab':htab=d.v;break;
   case 'wtab':wtab=d.v;break;
   case 'start':{if(A){tab='train';break}const t=S.templates.find(x=>x.id===d.id);
-   S.active={id:uid(),tplId:t?t.id:null,name:t?t.name:'Workout',start:Date.now(),entries:t?t.exerciseIds.map(exId=>({exId,sets:newSets(exId)})):[]};save();window.scrollTo(0,0);break}
+   S.active={id:uid(),tplId:t?t.id:null,name:t?t.name:'Workout',start:Date.now(),entries:t?t.exerciseIds.map(exId=>{const tg=(t.targets||{})[exId];return {exId,target:tg,sets:newSets(exId,tg&&tg.sets)}}):[]};save();window.scrollTo(0,0);break}
   case 'chk':{unlock();const en=A.entries[+d.e],s=en.sets[+d.s];
    if(s.done){s.done=false;s.pr=false}
    else{const p=ph(en.exId,+d.s);if(s.w===''&&p)s.w=String(p.w);if(s.r===''&&p)s.r=String(p.r);
