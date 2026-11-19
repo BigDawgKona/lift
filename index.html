@@ -163,10 +163,10 @@ const lenU=()=>S.unit==='lb'?'in':'cm';
 const MEAS=['Waist','Chest','Hips','Arms','Thighs','Neck'];
 
 const PLAN=[
- ['Full Body A',[['Leg Press',3,'8–12'],['Machine Chest Press',3,'8–12'],['Lat Pulldown',3,'8–12'],['Seated Leg Curl',3,'10–15'],['DB Lateral Raise',3,'12–15'],['Tricep Pushdown',2,'10–15']]],
- ['Full Body B',[['Hack Squat',3,'8–12'],['Seated Cable Row',3,'8–12'],['Incline DB Press',3,'8–12'],['Leg Extension',3,'10–15'],['Machine Shoulder Press',2,'8–12'],['DB Curl',2,'10–15']]],
- ['Full Body C',[['DB Romanian Deadlift',3,'8–12'],['Pec Deck',3,'10–15'],['Chest-Supported Row',3,'8–12'],['Calf Raise',3,'10–15'],['Face Pull',2,'12–15'],['Cable Crunch',2,'10–15']]]];
-const PLAN_V=2;
+ ['Push',[['Machine Chest Press',3,'8–12'],['Incline DB Press',3,'8–12'],['Pec Deck',3,'10–15'],['Machine Shoulder Press',3,'8–12'],['DB Lateral Raise',3,'12–15'],['Tricep Pushdown',3,'10–15']]],
+ ['Pull',[['Lat Pulldown',3,'8–12'],['Seated Cable Row',3,'8–12'],['Chest-Supported Row',3,'8–12'],['Face Pull',3,'12–15'],['DB Curl',3,'10–15'],['DB Hammer Curl',2,'10–15']]],
+ ['Legs',[['Leg Press',3,'8–12'],['Hack Squat',3,'8–12'],['Seated Leg Curl',3,'10–15'],['Leg Extension',3,'10–15'],['Hip Thrust Machine',3,'8–12'],['Calf Raise',3,'10–15'],['Cable Crunch',2,'10–15']]]];
+const PLAN_V=3;
 function applyPlan(o){o.templates=PLAN.map(([name,list])=>{const t={id:uid(),name,exerciseIds:[],targets:{}};list.forEach(([n,sets,reps])=>{let ex=o.exercises.find(x=>x.name.toLowerCase()===n.toLowerCase());if(!ex){ex={id:uid(),name:n};o.exercises.push(ex)}t.exerciseIds.push(ex.id);t.targets[ex.id]={sets,reps}});return t});o.planV=PLAN_V;return o}
 function seed(){return applyPlan({v:1,unit:'lb',rest:90,goal:3,exercises:[],templates:[],sessions:[],weights:[],measures:[],active:null})}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.v){const o=Object.assign(seed(),d);if((d.planV||0)<PLAN_V&&!o.active){applyPlan(o);localStorage.setItem(KEY,JSON.stringify(o))}return o}}catch(e){}return seed()}
